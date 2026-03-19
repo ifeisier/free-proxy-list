@@ -1,0 +1,12 @@
+[package]
+name = "free-proxy-list"
+version = "0.1.0"
+edition = "2024"
+description = "该项目整合网上免费的 SOCKS5, 并将 socks5 转为 socks5h."
+
+[dependencies]
+tokio = { version = "1.49.0", default-features = false, features = ["rt-multi-thread", "fs", "time", "sync", "signal"] }
+rust_tools = { version = "0.1.0", git = "https://github.com/ifeisier/rust_tools", branch = "main" }
+anyhow = "1.0.88"
+log = "0.4.20"
+tokio-cron-scheduler = "0.15"

@@ -10,3 +10,4 @@ rust_tools = { version = "0.1.0", git = "https://github.com/ifeisier/rust_tools"
 anyhow = "1.0.88"
 log = "0.4.20"
 tokio-cron-scheduler = "0.15"
+chrono = { version = "0.4", default-features = false, features = ["clock"] }

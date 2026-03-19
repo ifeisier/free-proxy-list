@@ -2,6 +2,8 @@
 
 //! 该项目整合网上免费的 SOCKS5, 并将 socks5 转为 socks5h.
 
+mod git;
+
 use anyhow::Result;
 use rust_tools::flexi_logger::init_flexi_logger;
 use rust_tools::reqwest::get;
@@ -72,7 +74,7 @@ fn main() {
 
 /// 异步执行入口
 async fn async_main() {
-    let mut text = String::new();
+    let mut socks5_text = String::new();
 
     let urls = vec![
         "https://raw.githubusercontent.com/dpangestuw/Free-Proxy/main/socks5_proxies.txt",
@@ -81,7 +83,7 @@ async fn async_main() {
     for url in urls {
         let r = fetch_proxy_text(url).await;
         match r {
-            Ok(v) => text.push_str(&v),
+            Ok(v) => socks5_text.push_str(&v),
             Err(e) => {
                 log::error!("下载代理列表失败: {e}");
                 return;
@@ -89,20 +91,33 @@ async fn async_main() {
         }
     }
 
-    let text = dedupe_by_ip(&text);
-    match write("socks5h.txt", text).await {
-        Ok(_) => log::info!("代理列表已保存到 socks5h.txt"),
-        Err(e) => log::error!("保存代理列表失败: {e}"),
+    if let Err(e) = write("socks5.txt", &socks5_text).await {
+        log::error!("保存代理列表失败: {e}");
+        return;
+    }
+    log::info!("代理列表已保存到 socks5.txt");
+    if let Err(e) = git::git_commit_and_push("socks5.txt").await {
+        log::error!("推送 socks5.txt 到仓库失败: {e}");
+        return;
+    }
+
+    let socks5h_text = socks5_text.replace("socks5", "socks5h");
+    if let Err(e) = write("socks5h.txt", socks5h_text).await {
+        log::error!("保存代理列表失败: {e}");
+        return;
+    }
+    log::info!("代理列表已保存到 socks5h.txt");
+    if let Err(e) = git::git_commit_and_push("socks5h.txt").await {
+        log::error!("推送 socks5h.txt 到仓库失败: {e}");
     }
 }
 
-/// 下载代理列表并将 socks5 转为 socks5h.
+/// 下载代理列表.
 async fn fetch_proxy_text(url: &str) -> Result<String> {
     log::info!("下载代理列表: {url}");
 
     let r = get(url).await?;
-    let r = String::from_utf8(r.to_vec())?;
-    let mut r = r.replace("socks5", "socks5h");
+    let mut r = String::from_utf8(r.to_vec())?;
     if !r.ends_with('\n') {
         r.push('\n');
     }
@@ -110,6 +125,7 @@ async fn fetch_proxy_text(url: &str) -> Result<String> {
 }
 
 /// 按 IP 去重，保留每个 IP 的第一条代理
+#[allow(dead_code)]
 fn dedupe_by_ip(text: &str) -> String {
     let mut seen_ips = HashSet::new();
     let mut result = String::new();

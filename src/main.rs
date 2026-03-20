@@ -90,6 +90,7 @@ async fn async_main() {
             }
         }
     }
+    socks5_text = dedupe(&socks5_text);
 
     if let Err(e) = write("socks5.txt", &socks5_text).await {
         log::error!("保存代理列表失败: {e}");
@@ -124,10 +125,9 @@ async fn fetch_proxy_text(url: &str) -> Result<String> {
     Ok(r)
 }
 
-/// 按 IP 去重，保留每个 IP 的第一条代理
-#[allow(dead_code)]
-fn dedupe_by_ip(text: &str) -> String {
-    let mut seen_ips = HashSet::new();
+/// 去重代理列表
+fn dedupe(text: &str) -> String {
+    let mut seen_lines = HashSet::new();
     let mut result = String::new();
 
     for line in text.lines() {
@@ -136,15 +136,7 @@ fn dedupe_by_ip(text: &str) -> String {
             continue;
         }
 
-        let Some(addr) = line.strip_prefix("socks5h://") else {
-            continue;
-        };
-
-        let Some((ip, _port)) = addr.rsplit_once(':') else {
-            continue;
-        };
-
-        if seen_ips.insert(ip.to_string()) {
+        if seen_lines.insert(line) {
             result.push_str(line);
             result.push('\n');
         }
